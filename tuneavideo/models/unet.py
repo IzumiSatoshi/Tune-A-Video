@@ -436,6 +436,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
             "CrossAttnUpBlock3D",
             "CrossAttnUpBlock3D"
         ]
+        del config["mid_block_type"] # shouldn't contain 2d unet mid_block_type in config of 3d unet. otherwise, "raise ValueError(f"unknown mid_block_type : {mid_block_type}")"
 
         from diffusers.utils import WEIGHTS_NAME, SAFETENSORS_WEIGHTS_NAME
         model = cls.from_config(config)
