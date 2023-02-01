@@ -25,6 +25,7 @@ from .unet_blocks import (
 )
 from .resnet import InflatedConv3d
 
+import safetensors
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
@@ -438,10 +439,18 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
 
         from diffusers.utils import WEIGHTS_NAME, SAFETENSORS_WEIGHTS_NAME
         model = cls.from_config(config)
+
+        # dirty 
         model_file = os.path.join(pretrained_model_path, WEIGHTS_NAME)
-        if not os.path.isfile(model_file):
-            raise RuntimeError(f"{model_file} does not exist")
-        state_dict = torch.load(model_file, map_location="cpu")
+        if os.path.isfile(model_file):
+            state_dict = torch.load(model_file, map_location="cpu")
+        else:
+            model_file = os.path.join(pretrained_model_path, SAFETENSORS_WEIGHTS_NAME)
+            if os.path.isfile(model_file):
+                state_dict = safetensors.torch.load_file(model_file, device="cpu")
+            else:
+                raise RuntimeError(f"{model_file} does not exist")
+
         for k, v in model.state_dict().items():
             if '_temp.' in k:
                 state_dict.update({k: v})
