@@ -41,6 +41,9 @@ class TuneAVideoPipelineOutput(BaseOutput):
 def preprocess(video: list[Image.Image]):
     video_tensor = torch.Tensor(np.array([np.array(image) for image in video]))
     video_tensor = rearrange(video_tensor, "f h w c -> f c h w")
+
+    # map to -1 ~ 1
+    video_tensor = 2.0 * (video_tensor / 255) - 1.0
     return video_tensor
 
 
@@ -355,6 +358,8 @@ class TuneAVideoVideo2VideoPipeline(DiffusionPipeline):
         device,
         generator,
     ):
+        video = video.to(device=device, dtype=dtype)
+
         shape = (
             batch_size,
             num_channels_latents,
@@ -427,7 +432,6 @@ class TuneAVideoVideo2VideoPipeline(DiffusionPipeline):
 
         # Preprocess video
         video = preprocess(video)
-        video = video.half().to("cuda")  # TODO: this is not suitable
 
         # Prepare timesteps
         self.scheduler.set_timesteps(num_inference_steps, device=device)
