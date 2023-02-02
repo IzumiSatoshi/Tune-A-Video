@@ -1,4 +1,5 @@
 import os
+from PIL import Image
 import imageio
 import numpy as np
 
@@ -21,3 +22,21 @@ def save_videos_grid(videos: torch.Tensor, path: str, rescale=False, n_rows=4, f
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     imageio.mimsave(path, outputs, fps=fps)
+
+
+# TODO: This code may degrade image quality
+def read_gif(path) -> list[Image.Image]:
+    gif_image = Image.open(path)
+    images = []
+    for index in range(gif_image.n_frames):
+        gif_image.seek(index)
+        images.append(gif_image.copy().convert("RGB"))
+
+    return images
+
+
+# TODO: This code may degrade image quality
+def save_as_gif(images: list[Image.Image], path, duration=500, loop=0):
+    images[0].save(
+        path, save_all=True, append_images=images[1:], duration=duration, loop=loop
+    )
