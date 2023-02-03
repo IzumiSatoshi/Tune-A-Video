@@ -1,3 +1,7 @@
+# what I did
+- video2video like img2img of T2I
+- support safetensors
+
 # Tune-A-Video
 
 This repository is the official implementation of [Tune-A-Video](https://arxiv.org/abs/2212.11565).
