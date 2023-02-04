@@ -25,7 +25,7 @@ from diffusers.schedulers import (
 )
 from diffusers.utils import deprecate, logging, BaseOutput
 
-from einops import rearrange
+from einops import rearrange, repeat
 
 from ..models.unet import UNet3DConditionModel
 
@@ -352,6 +352,7 @@ class TuneAVideoVideo2VideoPipeline(DiffusionPipeline):
         timestep,
         batch_size,
         num_channels_latents,
+        fix_seed_across_frames,
         height,
         width,
         dtype,
@@ -374,9 +375,18 @@ class TuneAVideoVideo2VideoPipeline(DiffusionPipeline):
         init_latents = 0.18215 * init_latents
         init_latents = torch.cat([init_latents], dim=0)
 
-        noise = torch.randn(shape, generator=generator, device=device, dtype=dtype).to(
-            device
-        )
+        if fix_seed_across_frames:
+            noise = torch.randn(
+                (shape[0], shape[1], shape[3], shape[4]),
+                generator=generator,
+                device=device,
+                dtype=dtype,
+            ).to(device)
+            noise = repeat(noise, "b c h w -> b c f h w", f=len(video))  # repeat frame
+        else:
+            noise = torch.randn(
+                shape, generator=generator, device=device, dtype=dtype
+            ).to(device)
 
         # scale the initial noise by the standard deviation required by the scheduler
         # this is not needed for v2v I assume
@@ -395,6 +405,7 @@ class TuneAVideoVideo2VideoPipeline(DiffusionPipeline):
         width: Optional[int] = None,
         num_inference_steps: int = 50,
         guidance_scale: float = 7.5,
+        fix_seed_across_frames=True,
         negative_prompt: Optional[Union[str, List[str]]] = None,
         num_videos_per_prompt: Optional[int] = 1,
         eta: float = 0.0,
@@ -447,6 +458,7 @@ class TuneAVideoVideo2VideoPipeline(DiffusionPipeline):
             latent_timestep,
             batch_size * num_videos_per_prompt,
             num_channels_latents,
+            fix_seed_across_frames,
             height,
             width,
             text_embeddings.dtype,
