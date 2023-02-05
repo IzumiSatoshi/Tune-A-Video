@@ -11,10 +11,7 @@ train_data:
 
 validation_data:
   prompts:
-    - "anime 1girl drinking water, masterpiece, best quality, 8k, detailed anime style"
-    - "anime 1girl looking back, masterpiece, best quality, 8k, detailed anime style"
     - "anime 1girl speaking, white hair, blue eyes, masterpiece, best quality, 8k, detailed anime style"
-    - "anime 1girl speaking, white hair, blue eyes"
 
   video_length: 8
   width: 512
@@ -29,7 +26,11 @@ checkpointing_steps: 1000
 validation_steps: 200
 trainable_modules:
   - "attn1.to_q"
+  - "attn1.to_k"
+  - "attn1.to_v"
   - "attn2.to_q"
+  - "attn2.to_k"
+  - "attn2.to_v"
   - "attn_temp"
 
 seed: 0
