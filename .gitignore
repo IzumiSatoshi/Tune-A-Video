@@ -1,0 +1,5 @@
+checkpoints
+data
+outputs
+__pycache__
+*.mp4
