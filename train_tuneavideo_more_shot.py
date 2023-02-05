@@ -26,7 +26,7 @@ from tqdm.auto import tqdm
 from transformers import CLIPTextModel, CLIPTokenizer
 
 from tuneavideo.models.unet import UNet3DConditionModel
-from tuneavideo.data.dataset import TuneAVideoDataset
+from tuneavideo.data.dataset import TuneAVideoMoreShotDataset
 from tuneavideo.pipelines.pipeline_tuneavideo import TuneAVideoPipeline
 from tuneavideo.util import save_videos_grid
 from einops import rearrange
@@ -168,7 +168,7 @@ def main(
     )
 
     # Get the training dataset
-    train_dataset = TuneAVideoDataset(**train_data, tokenizer=tokenizer)
+    train_dataset = TuneAVideoMoreShotDataset(**train_data, tokenizer=tokenizer)
 
     # DataLoaders creation:
     train_dataloader = torch.utils.data.DataLoader(

@@ -2,7 +2,7 @@ pretrained_model_path: "./checkpoints/dedede"
 output_dir: "./outputs/yurucamp_stamp"
 
 train_data:
-  anotations_file: "data/yurucamp_stamp/annotation.jsonl"
+  annotations_file: "data/yurucamp_stamp/annotation.jsonl"
   video_dir: "data/yurucamp_stamp"
   size: 512
   n_sample_frames: 8
@@ -11,7 +11,10 @@ train_data:
 
 validation_data:
   prompts:
-    - "masterpiece, best quality, 8k, detailed anime style of hatsune miku"
+    - "anime 1girl drinking water, masterpiece, best quality, 8k, detailed anime style"
+    - "anime 1girl looking back, masterpiece, best quality, 8k, detailed anime style"
+    - "anime 1girl speaking, white hair, blue eyes, masterpiece, best quality, 8k, detailed anime style"
+    - "anime 1girl speaking, white hair, blue eyes"
 
   video_length: 8
   width: 512
