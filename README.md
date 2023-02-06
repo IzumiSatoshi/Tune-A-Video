@@ -2,6 +2,9 @@
 - more general Text2Video trainer (train_tuneavideo_more_shot.py)
 - video2video like img2img of T2I
 - support safetensors
+```
+accelerate launch train_tuneavideo_more_shot.py --config="configs/more_shot/yurucamp_stamp.yaml"
+```
 
 # Tune-A-Video
 

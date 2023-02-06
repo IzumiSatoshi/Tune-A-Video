@@ -65,7 +65,13 @@ class TuneAVideoMoreShotDataset(Dataset):
         sample_start_idx: int = 0,
         sample_frame_rate: int = 1,
     ):
-        self.df = pd.read_json(annotations_file, lines=True)
+        self.df = None
+
+        if annotations_file.endswith(".jsonl"):
+            self.df = pd.read_json(annotations_file, lines=True)
+        elif annotations_file.endswith(".csv"):
+            self.df = pd.read_csv(annotations_file)
+
         self.video_dir = video_dir
         self.tokenizer = tokenizer  # is this right place?
 
@@ -106,6 +112,6 @@ class TuneAVideoMoreShotDataset(Dataset):
             return_tensors="pt",
         ).input_ids[0]
 
-        example = {"pixel_values": video, "prompt_ids": prompt_ids}
+        example = {"pixel_values": video, "prompt_ids": prompt_ids, "prompt": prompt}
 
         return example
