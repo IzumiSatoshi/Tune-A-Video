@@ -242,6 +242,8 @@ def main(
 
     # Potentially load in the weights and states from a previous save
     if resume_from_checkpoint:
+        # commented out cuz I don't know how to use this
+        """
         if resume_from_checkpoint != "latest":
             path = os.path.basename(resume_from_checkpoint)
         else:
@@ -253,6 +255,12 @@ def main(
         accelerator.print(f"Resuming from checkpoint {path}")
         accelerator.load_state(os.path.join(output_dir, path))
         global_step = int(path.split("-")[1])
+        """
+        accelerator.print(f"Resuming from checkpoint {resume_from_checkpoint}")
+        accelerator.load_state(os.path.join(output_dir, resume_from_checkpoint))
+        global_step = int(
+            resume_from_checkpoint.split("-")[-1]
+        )  # Change index from 1 to -1 so that it always refers to the last number
 
         first_epoch = global_step // num_update_steps_per_epoch
         resume_step = global_step % num_update_steps_per_epoch

@@ -1,8 +1,9 @@
+resume_from_checkpoint: "/mnt/disks/disk_main/projects/Tune-A-Video/outputs/yurucamp_stamp/1qkv2qkv_9600steps_simple/checkpoint-1200"
 pretrained_model_path: "./checkpoints/dedede"
 output_dir: "./outputs/yurucamp_stamp"
 
 train_data:
-  annotations_file: "data/yurucamp_stamp/annotation.csv"
+  annotations_file: "data/yurucamp_stamp/annotation_simple.csv"
   video_dir: "data/yurucamp_stamp"
   size: 512
   n_sample_frames: 8
@@ -13,6 +14,7 @@ validation_data:
   prompts:
     - "anime 1girl speaking, white hair, blue eyes, masterpiece, best quality, 8k, detailed anime style"
     - "anime 1girl giving thumbs up"
+    - "best quality, masterpiece, 8k, detailed anime style of 1girl"
 
   video_length: 8
   width: 512
@@ -21,7 +23,7 @@ validation_data:
   guidance_scale: 7.5
 
 learning_rate: 3e-5
-train_batch_size: 8
+train_batch_size: 1
 max_train_steps: 100000
 checkpointing_steps: 200
 validation_steps: 50
