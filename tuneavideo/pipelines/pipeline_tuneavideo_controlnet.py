@@ -464,19 +464,42 @@ class TuneAVideoControlNetPipeline(DiffusionPipeline):
 
                 if controlnet_hint is not None:
                     # ControlNet predict the noise residual
-                    controlnet_input = latent_model_input.squeeze(2)
-                    control = self.controlnet(
-                        controlnet_input,
-                        t,
-                        encoder_hidden_states=text_embeddings,
-                        controlnet_hint=controlnet_hint,
+
+                    # pred control for eatch frame 1 by 1
+                    controlnet_input = rearrange(
+                        latent_model_input, "b c f h w -> f b c h w"
                     )
-                    control = [c.unsqueeze(2) for c in control]
+                    control_list = []
+                    for frame in range(controlnet_input.shape[0]):
+                        inp = controlnet_input[frame].squeeze(0)
+                        inp_hint = controlnet_hint[frame].unsqueeze(0)
+                        res = self.controlnet(
+                            inp,
+                            t,
+                            encoder_hidden_states=text_embeddings,
+                            controlnet_hint=inp_hint,
+                        )
+                        control_list.append(res)
+
+                    # concat controlnet results
+                    cat_control = []
+                    for idx in range(len(control_list[0])):
+                        idx_control_item = []
+                        for control in control_list:
+                            idx_control_item.append(control[idx].unsqueeze(0))
+                        cat_item = torch.concat(idx_control_item, dim=0)  # f b c h w
+                        cat_item = rearrange(cat_item, "f b c h w -> b c f h w")
+                        cat_control.append(cat_item)
+
+                    # print("cat_control[-1]", cat_control[-1].shape)
+
+                    # pred
+                    # print("latent_model_input", latent_model_input.shape)
                     noise_pred = self.unet(
                         latent_model_input,
                         t,
                         encoder_hidden_states=text_embeddings,
-                        control=control,
+                        control=cat_control,
                     ).sample
                 else:
                     # predict the noise residual

@@ -405,7 +405,15 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
 
         if control is not None:
             # ControlledUnet: apply mid_zero_conv output
-            sample += control.pop()
+            add_val = control.pop()
+            # print("control.pop ", add_val.shape)
+            # print("sample ", sample.shape)
+            sample += add_val
+
+        # print("res_samples")
+        # print([rrr.shape for rrr in down_block_res_samples])
+        # print("control_samples")
+        # print([ccc.shape for ccc in control])
 
         # up
         for i, upsample_block in enumerate(self.up_blocks):
