@@ -338,10 +338,8 @@ def main(
                 controlnet_input = rearrange(noisy_latents, "b c f h w -> f b c h w")
                 control_list = []
                 for frame in range(controlnet_input.shape[0]):
-                    inp = controlnet_input[frame]
+                    inp = controlnet_input[frame]  # squeeze is not needed ...?
                     inp_hint = controlnet_hint[frame].unsqueeze(0)
-                    print("inp ", inp.shape)
-                    print("inp_hint ", inp_hint.shape)
                     res = controlnet(
                         inp,
                         timesteps,
@@ -403,7 +401,10 @@ def main(
                         generator.manual_seed(seed)
                         for idx, prompt in enumerate(validation_data.prompts):
                             sample = validation_pipeline(
-                                prompt, generator=generator, **validation_data
+                                prompt,
+                                generator=generator,
+                                controlnet_hint=controlnet_hint,
+                                **validation_data,
                             ).videos
                             save_videos_grid(
                                 sample,

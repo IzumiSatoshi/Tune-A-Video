@@ -24,6 +24,7 @@ from .unet_blocks import (
     get_up_block,
 )
 from .resnet import InflatedConv3d
+from .controlnet_blocks import InflatedControlNetInputHintBlock3D, ControlNetZeroConvBlock3d
 
 import safetensors
 
@@ -76,6 +77,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
         num_class_embeds: Optional[int] = None,
         upcast_attention: bool = False,
         resnet_time_scale_shift: str = "default",
+        controlnet_hint_channels: Optional[int] = None,
     ):
         super().__init__()
 
@@ -162,6 +164,18 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
 
         # count how many layers upsample the videos
         self.num_upsamplers = 0
+
+        if controlnet_hint_channels is not None:
+            # ControlNet: add input_hint_block, zero_conv_block
+            self.controlnet_input_hint_block = InflatedControlNetInputHintBlock3D(
+                hint_channels=controlnet_hint_channels, channels=block_out_channels[0]
+            )
+            self.controlnet_zero_conv_block = ControlNetZeroConvBlock3d(
+                block_out_channels=block_out_channels,
+                down_block_types=down_block_types,
+                layers_per_block=layers_per_block,
+            )
+            return  # Modules from the following lines are not defined in ControlNet
 
         # up
         reversed_block_out_channels = list(reversed(block_out_channels))
@@ -299,6 +313,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
         encoder_hidden_states: torch.Tensor,
         class_labels: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
+        controlnet_hint: Optional[torch.Tensor] = None,
         control: Optional[List[torch.Tensor]] = None,
         return_dict: bool = True,
     ) -> Union[UNet3DConditionOutput, Tuple]:
@@ -376,6 +391,8 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
 
         # pre-process
         sample = self.conv_in(sample)
+        if controlnet_hint is not None:
+            sample += self.controlnet_input_hint_block(controlnet_hint)
 
         # down
         down_block_res_samples = (sample,)
@@ -394,6 +411,12 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
                 sample, res_samples = downsample_block(hidden_states=sample, temb=emb)
 
             down_block_res_samples += res_samples
+            
+        if controlnet_hint is not None:
+            # ControlNet: zero convs
+            return self.controlnet_zero_conv_block(
+                down_block_res_samples=down_block_res_samples, mid_block_sample=sample
+            )
 
         # mid
         sample = self.mid_block(
