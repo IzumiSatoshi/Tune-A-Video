@@ -1,9 +1,12 @@
-pretrained_model_path: "./checkpoints/stable-diffusion-v1-4"
-output_dir: "./outputs/man-surfing_lr3e-5_seed33"
+# accelerate launch train_tuneavideo_controlnet.py --config="configs/controlnet/woman_dance.yaml"
+
+pretrained_model_path: "../diffusers_controlnet/models/control_sd15_openpose"
+output_dir: "./outputs/control_woman_dance"
 
 train_data:
-  video_path: "data/man-surfing.mp4"
-  prompt: "a man is surfing"
+  video_path: "data/woman_dance/original.mp4"
+  controlnet_hint_path: "data/woman_dance/openpose.mp4"
+  prompt: "a woman is dancing"
   n_sample_frames: 8
   width: 512
   height: 512
@@ -12,10 +15,8 @@ train_data:
 
 validation_data:
   prompts:
-    - "a panda is surfing"
-    - "a boy, wearing a birthday hat, is surfing"
-    - "a raccoon is surfing, cartoon style"
-    - "Iron Man is surfing in the desert"
+    - "a firefighter is dancing"
+    - "a panda is dancing"
   video_length: 8
   width: 512
   height: 512
@@ -32,8 +33,9 @@ trainable_modules:
   - "attn2.to_q"
   - "attn_temp"
 
-seed: 33
+seed: 0
 mixed_precision: fp16
+# mixed_precision: "no"
 use_8bit_adam: False
 gradient_checkpointing: True
 enable_xformers_memory_efficient_attention: True

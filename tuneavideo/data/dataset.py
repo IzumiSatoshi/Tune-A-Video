@@ -115,3 +115,52 @@ class TuneAVideoMoreShotDataset(Dataset):
         example = {"pixel_values": video, "prompt_ids": prompt_ids, "prompt": prompt}
 
         return example
+
+class TuneAVideoControlNetDataset(Dataset):
+    def __init__(
+        self,
+        video_path: str,
+        prompt: str,
+        controlnet_hint_path: str,
+        width: int = 512,
+        height: int = 512,
+        n_sample_frames: int = 8,
+        sample_start_idx: int = 0,
+        sample_frame_rate: int = 1,
+    ):
+        self.video_path = video_path
+        self.prompt = prompt
+        self.prompt_ids = None
+        self.controlnet_hint_path = controlnet_hint_path
+
+        self.width = width
+        self.height = height
+        self.n_sample_frames = n_sample_frames
+        self.sample_start_idx = sample_start_idx
+        self.sample_frame_rate = sample_frame_rate
+
+    def __len__(self):
+        return 1
+
+    def __getitem__(self, index):
+        # load and sample video frames
+        x_vr = decord.VideoReader(self.video_path, width=self.width, height=self.height)
+        x_sample_index = list(
+            range(self.sample_start_idx, len(x_vr), self.sample_frame_rate)
+        )[: self.n_sample_frames]
+        x_video = x_vr.get_batch(x_sample_index)
+        x_video = rearrange(x_video, "f h w c -> f c h w")
+
+        hint_vr = decord.VideoReader(self.controlnet_hint_path, width=self.width, height=self.height)
+        hint_sample_index = list(
+            range(self.sample_start_idx, len(hint_vr), self.sample_frame_rate)
+        )[: self.n_sample_frames]
+        hint_video = hint_vr.get_batch(hint_sample_index)
+        hint_video = rearrange(hint_video, "f h w c -> f c h w")
+
+        example = {
+            "pixel_values": (x_video / 127.5 - 1.0), 
+            "pixel_values_hint": (hint_video / 127.5 - 1.0), 
+            "prompt_ids": self.prompt_ids, 
+        }
+        return example
