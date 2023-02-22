@@ -24,7 +24,7 @@ from diffusers.schedulers import (
 )
 from diffusers.utils import deprecate, logging, BaseOutput
 
-from einops import rearrange
+from einops import rearrange, repeat
 
 from ..models.unet import UNet3DConditionModel
 
@@ -331,6 +331,7 @@ class TuneAVideoPipeline(DiffusionPipeline):
         self,
         batch_size,
         num_channels_latents,
+        fix_seed_across_frames,
         video_length,
         height,
         width,
@@ -365,9 +366,21 @@ class TuneAVideoPipeline(DiffusionPipeline):
                 ]
                 latents = torch.cat(latents, dim=0).to(device)
             else:
-                latents = torch.randn(
-                    shape, generator=generator, device=rand_device, dtype=dtype
-                ).to(device)
+                # only w/o generator
+                if fix_seed_across_frames:
+                    latents = torch.randn(
+                        (shape[0], shape[1], shape[3], shape[4]),
+                        generator=generator,
+                        device=device,
+                        dtype=dtype,
+                    ).to(device)
+                    latents = repeat(
+                        latents, "b c h w -> b c f h w", f=video_length
+                    )  # repeat frame
+                else:
+                    latents = torch.randn(
+                        shape, generator=generator, device=rand_device, dtype=dtype
+                    ).to(device)
         else:
             if latents.shape != shape:
                 raise ValueError(
@@ -394,6 +407,8 @@ class TuneAVideoPipeline(DiffusionPipeline):
         generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
         latents: Optional[torch.FloatTensor] = None,
         output_type: Optional[str] = "tensor",
+        fix_seed_across_frames=False,
+        temporal_guidance_scale: Optional[int] = None,
         return_dict: bool = True,
         callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
         callback_steps: Optional[int] = 1,
@@ -432,6 +447,7 @@ class TuneAVideoPipeline(DiffusionPipeline):
         latents = self.prepare_latents(
             batch_size * num_videos_per_prompt,
             num_channels_latents,
+            fix_seed_across_frames,
             video_length,
             height,
             width,
@@ -462,12 +478,38 @@ class TuneAVideoPipeline(DiffusionPipeline):
                     latent_model_input, t, encoder_hidden_states=text_embeddings
                 ).sample.to(dtype=latents_dtype)
 
+                # temporal cfg
+                if temporal_guidance_scale is not None:
+                    uncond_emb = text_embeddings[0].unsqueeze(0)
+                    latent_model_input_0 = latent_model_input[0].unsqueeze(0)
+                    noise_pred_uncond_untemp = (
+                        self.unet(
+                            latent_model_input_0,
+                            t,
+                            encoder_hidden_states=uncond_emb,
+                            disable_sc_attn=True,
+                        )
+                        .sample.to(dtype=latents_dtype)
+                        .squeeze(0)
+                    )
+
                 # perform guidance
                 if do_classifier_free_guidance:
                     noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
-                    noise_pred = noise_pred_uncond + guidance_scale * (
-                        noise_pred_text - noise_pred_uncond
-                    )
+                    if temporal_guidance_scale is not None:
+                        # gen-1's cfg
+                        # fmt: off
+                        noise_pred = (
+                            noise_pred_uncond_untemp
+                            + temporal_guidance_scale * (noise_pred_uncond - noise_pred_uncond_untemp)
+                            + guidance_scale * (noise_pred_text - noise_pred_uncond)
+                        )
+                        # fmt: on
+                    else:
+                        # normal cfg
+                        noise_pred = noise_pred_uncond + guidance_scale * (
+                            noise_pred_text - noise_pred_uncond
+                        )
 
                 # compute the previous noisy sample x_t -> x_t-1
                 latents = self.scheduler.step(

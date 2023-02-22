@@ -1,12 +1,12 @@
 import sys
-sys.path.append(".")
+sys.path.append("./Tune-A-Video")
 
 from tuneavideo.models.unet import UNet3DConditionModel
 import torch
 
-path = "./checkpoints/tav_yor_dedede/unet"
-unet = UNet3DConditionModel.from_pretrained(path, torch_dtype=torch.float)
-sample = torch.randn(1, 4, 1, 64, 64)
+unet = UNet3DConditionModel(sample_size=64, cross_attention_dim=768)
+sample = torch.randn(1, 4, 3, 64, 64)
 timestep = 1
 encoder_hidden_states = torch.randn(1, 320, 768)
-res = unet(sample, timestep, encoder_hidden_states)
+hint = torch.randn(1, 3, 3, 512, 512)
+res = unet(sample, timestep, encoder_hidden_states, disable_sc_attn=True)

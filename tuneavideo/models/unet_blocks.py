@@ -196,10 +196,10 @@ class UNetMidBlock3DCrossAttn(nn.Module):
         self.attentions = nn.ModuleList(attentions)
         self.resnets = nn.ModuleList(resnets)
 
-    def forward(self, hidden_states, temb=None, encoder_hidden_states=None, attention_mask=None):
+    def forward(self, hidden_states, temb=None, encoder_hidden_states=None, attention_mask=None, disable_sc_attn=False):
         hidden_states = self.resnets[0](hidden_states, temb)
         for attn, resnet in zip(self.attentions, self.resnets[1:]):
-            hidden_states = attn(hidden_states, encoder_hidden_states=encoder_hidden_states).sample
+            hidden_states = attn(hidden_states, encoder_hidden_states=encoder_hidden_states, disable_sc_attn=disable_sc_attn).sample
             hidden_states = resnet(hidden_states, temb)
 
         return hidden_states
@@ -282,7 +282,7 @@ class CrossAttnDownBlock3D(nn.Module):
 
         self.gradient_checkpointing = False
 
-    def forward(self, hidden_states, temb=None, encoder_hidden_states=None, attention_mask=None):
+    def forward(self, hidden_states, temb=None, encoder_hidden_states=None, attention_mask=None, disable_sc_attn=False):
         output_states = ()
 
         for resnet, attn in zip(self.resnets, self.attentions):
@@ -305,7 +305,7 @@ class CrossAttnDownBlock3D(nn.Module):
                 )[0]
             else:
                 hidden_states = resnet(hidden_states, temb)
-                hidden_states = attn(hidden_states, encoder_hidden_states=encoder_hidden_states).sample
+                hidden_states = attn(hidden_states, encoder_hidden_states=encoder_hidden_states, disable_sc_attn=disable_sc_attn).sample
 
             output_states += (hidden_states,)
 
@@ -479,6 +479,7 @@ class CrossAttnUpBlock3D(nn.Module):
         encoder_hidden_states=None,
         upsample_size=None,
         attention_mask=None,
+        disable_sc_attn=False,
     ):
         for resnet, attn in zip(self.resnets, self.attentions):
             # pop res hidden states
@@ -505,7 +506,7 @@ class CrossAttnUpBlock3D(nn.Module):
                 )[0]
             else:
                 hidden_states = resnet(hidden_states, temb)
-                hidden_states = attn(hidden_states, encoder_hidden_states=encoder_hidden_states).sample
+                hidden_states = attn(hidden_states, encoder_hidden_states=encoder_hidden_states, disable_sc_attn=disable_sc_attn).sample
 
         if self.upsamplers is not None:
             for upsampler in self.upsamplers:

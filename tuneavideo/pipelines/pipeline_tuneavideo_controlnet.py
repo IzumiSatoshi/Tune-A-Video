@@ -26,7 +26,7 @@ from diffusers.utils import deprecate, logging, BaseOutput
 
 from tuneavideo.models.unet_with_controlnet import UNet2DConditionModel
 
-from einops import rearrange
+from einops import rearrange, repeat
 
 from ..models.unet import UNet3DConditionModel
 
@@ -335,6 +335,7 @@ class TuneAVideoControlNetPipeline(DiffusionPipeline):
         self,
         batch_size,
         num_channels_latents,
+        fix_seed_across_frames,
         video_length,
         height,
         width,
@@ -369,9 +370,21 @@ class TuneAVideoControlNetPipeline(DiffusionPipeline):
                 ]
                 latents = torch.cat(latents, dim=0).to(device)
             else:
-                latents = torch.randn(
-                    shape, generator=generator, device=rand_device, dtype=dtype
-                ).to(device)
+                # only w/o generator
+                if fix_seed_across_frames:
+                    latents = torch.randn(
+                        (shape[0], shape[1], shape[3], shape[4]),
+                        generator=generator,
+                        device=device,
+                        dtype=dtype,
+                    ).to(device)
+                    latents = repeat(
+                        latents, "b c h w -> b c f h w", f=video_length
+                    )  # repeat frame
+                else:
+                    latents = torch.randn(
+                        shape, generator=generator, device=rand_device, dtype=dtype
+                    ).to(device)
         else:
             if latents.shape != shape:
                 raise ValueError(
@@ -398,6 +411,7 @@ class TuneAVideoControlNetPipeline(DiffusionPipeline):
         generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
         latents: Optional[torch.FloatTensor] = None,
         output_type: Optional[str] = "tensor",
+        fix_seed_across_frames=False,
         return_dict: bool = True,
         callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
         callback_steps: Optional[int] = 1,
@@ -437,6 +451,7 @@ class TuneAVideoControlNetPipeline(DiffusionPipeline):
         latents = self.prepare_latents(
             batch_size * num_videos_per_prompt,
             num_channels_latents,
+            fix_seed_across_frames,
             video_length,
             height,
             width,

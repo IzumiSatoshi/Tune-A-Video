@@ -86,7 +86,7 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
         else:
             self.proj_out = nn.Conv2d(inner_dim, in_channels, kernel_size=1, stride=1, padding=0)
 
-    def forward(self, hidden_states, encoder_hidden_states=None, timestep=None, return_dict: bool = True):
+    def forward(self, hidden_states, encoder_hidden_states=None, timestep=None,disable_sc_attn=False, return_dict: bool = True):
         # Input
         assert hidden_states.dim() == 5, f"Expected hidden_states to have ndim=5, but got ndim={hidden_states.dim()}."
         video_length = hidden_states.shape[2]
@@ -112,7 +112,8 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
                 hidden_states,
                 encoder_hidden_states=encoder_hidden_states,
                 timestep=timestep,
-                video_length=video_length
+                video_length=video_length,
+                disable_sc_attn=disable_sc_attn,
             )
 
         # Output
@@ -229,7 +230,7 @@ class BasicTransformerBlock(nn.Module):
                 self.attn2._use_memory_efficient_attention_xformers = use_memory_efficient_attention_xformers
             # self.attn_temp._use_memory_efficient_attention_xformers = use_memory_efficient_attention_xformers
 
-    def forward(self, hidden_states, encoder_hidden_states=None, timestep=None, attention_mask=None, video_length=None):
+    def forward(self, hidden_states, encoder_hidden_states=None, timestep=None, attention_mask=None, video_length=None, disable_sc_attn=False):
         # SparseCausal-Attention
         norm_hidden_states = (
             self.norm1(hidden_states, timestep) if self.use_ada_layer_norm else self.norm1(hidden_states)
@@ -240,7 +241,7 @@ class BasicTransformerBlock(nn.Module):
                 self.attn1(norm_hidden_states, encoder_hidden_states, attention_mask=attention_mask) + hidden_states
             )
         else:
-            hidden_states = self.attn1(norm_hidden_states, attention_mask=attention_mask, video_length=video_length) + hidden_states
+            hidden_states = self.attn1(norm_hidden_states, attention_mask=attention_mask, video_length=video_length, disable_sc_attn=disable_sc_attn) + hidden_states
 
         if self.attn2 is not None:
             # Cross-Attention
@@ -270,7 +271,10 @@ class BasicTransformerBlock(nn.Module):
 
 
 class SparseCausalAttention(CrossAttention):
-    def forward(self, hidden_states, encoder_hidden_states=None, attention_mask=None, video_length=None):
+    def forward(self, hidden_states, encoder_hidden_states=None, attention_mask=None, video_length=None, disable_sc_attn=False):
+        if disable_sc_attn:
+            return super().forward(hidden_states, encoder_hidden_states, attention_mask)
+
         batch_size, sequence_length, _ = hidden_states.shape
 
         encoder_hidden_states = encoder_hidden_states

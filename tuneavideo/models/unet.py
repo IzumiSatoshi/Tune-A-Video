@@ -313,6 +313,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
         encoder_hidden_states: torch.Tensor,
         class_labels: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
+        disable_sc_attn=False,
         controlnet_hint: Optional[torch.Tensor] = None,
         control: Optional[List[torch.Tensor]] = None,
         return_dict: bool = True,
@@ -324,6 +325,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
             encoder_hidden_states (`torch.FloatTensor`): (batch, sequence_length, feature_dim) encoder hidden states
             return_dict (`bool`, *optional*, defaults to `True`):
                 Whether or not to return a [`models.unet_2d_condition.UNet2DConditionOutput`] instead of a plain tuple.
+            disable_sc_attn: use normal cross attention instead of Sparse Causal Attention
 
         Returns:
             [`~models.unet_2d_condition.UNet2DConditionOutput`] or `tuple`:
@@ -406,6 +408,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
                     temb=emb,
                     encoder_hidden_states=encoder_hidden_states,
                     attention_mask=attention_mask,
+                    disable_sc_attn=disable_sc_attn,
                 )
             else:
                 sample, res_samples = downsample_block(hidden_states=sample, temb=emb)
@@ -424,6 +427,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
             emb,
             encoder_hidden_states=encoder_hidden_states,
             attention_mask=attention_mask,
+            disable_sc_attn=disable_sc_attn,
         )
 
         if control is not None:
@@ -469,6 +473,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
                     encoder_hidden_states=encoder_hidden_states,
                     upsample_size=upsample_size,
                     attention_mask=attention_mask,
+                    disable_sc_attn=disable_sc_attn,
                 )
             else:
                 sample = upsample_block(
